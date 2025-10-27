@@ -1,91 +1,148 @@
--- ✅ Only for the owner
+-- ✅ Only for you
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local localPlayer = Players.LocalPlayer
+local UIS = game:GetService("UserInputService")
+local RS = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
 
-if localPlayer.Name ~= "HRAVYGAMER_STUDIO" then return end --enter your username
+local player = Players.LocalPlayer
+if player.Name ~= "HRAVYGAMER_STUDIO" then return end -- tvoje jméno
 
--- ✈️ Fly system
+-- Variables
 local flying = false
-local flySpeed = 50
-local bodyGyro, bodyVelocity, conn
+local flySpeed = 70
+local flyGyro, flyVel, flyConn
+local infiniteJumpEnabled = false
+local jumpConn
+local speedValue = 16
 
+-- 🛫 FLY SYSTEM
 local function startFly()
-	local char = localPlayer.Character
+	local char = player.Character
 	if not char then return end
 	local root = char:FindFirstChild("HumanoidRootPart")
 	if not root then return end
+
+	flying = true
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if hum then hum.PlatformStand = true end
 
-	flying = true
+	flyGyro = Instance.new("BodyGyro")
+	flyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+	flyGyro.P = 9e4
+	flyGyro.CFrame = root.CFrame
+	flyGyro.Parent = root
 
-	bodyGyro = Instance.new("BodyGyro")
-	bodyGyro.MaxTorque = Vector3.new(1e9,1e9,1e9)
-	bodyGyro.P = 9e4
-	bodyGyro.Parent = root
+	flyVel = Instance.new("BodyVelocity")
+	flyVel.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+	flyVel.Velocity = Vector3.zero
+	flyVel.Parent = root
 
-	bodyVelocity = Instance.new("BodyVelocity")
-	bodyVelocity.MaxForce = Vector3.new(1e9,1e9,1e9)
-	bodyVelocity.Velocity = Vector3.zero
-	bodyVelocity.Parent = root
-
-	conn = RunService.Heartbeat:Connect(function()
+	flyConn = RS.Heartbeat:Connect(function()
 		if not flying then
-			conn:Disconnect()
+			flyConn:Disconnect()
 			return
 		end
 		local cam = workspace.CurrentCamera
 		local move = Vector3.zero
-		if UserInputService:IsKeyDown(Enum.KeyCode.W) then move += cam.CFrame.LookVector end
-		if UserInputService:IsKeyDown(Enum.KeyCode.S) then move -= cam.CFrame.LookVector end
-		if UserInputService:IsKeyDown(Enum.KeyCode.A) then move -= cam.CFrame.RightVector end
-		if UserInputService:IsKeyDown(Enum.KeyCode.D) then move += cam.CFrame.RightVector end
-		if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.new(0,1,0) end
-		if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3.new(0,1,0) end
-
-		bodyVelocity.Velocity = move.Magnitude > 0 and move.Unit * flySpeed or Vector3.zero
-		bodyGyro.CFrame = cam.CFrame
+		if UIS:IsKeyDown(Enum.KeyCode.W) then move += cam.CFrame.LookVector end
+		if UIS:IsKeyDown(Enum.KeyCode.S) then move -= cam.CFrame.LookVector end
+		if UIS:IsKeyDown(Enum.KeyCode.A) then move -= cam.CFrame.RightVector end
+		if UIS:IsKeyDown(Enum.KeyCode.D) then move += cam.CFrame.RightVector end
+		if UIS:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.new(0,1,0) end
+		if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3.new(0,1,0) end
+		if move.Magnitude > 0 then
+			flyVel.Velocity = move.Unit * flySpeed
+		else
+			flyVel.Velocity = Vector3.zero
+		end
+		flyGyro.CFrame = cam.CFrame
 	end)
 end
 
 local function stopFly()
 	flying = false
-	if conn then conn:Disconnect() end
-	if bodyGyro then bodyGyro:Destroy() end
-	if bodyVelocity then bodyVelocity:Destroy() end
-	local char = localPlayer.Character
+	if flyConn then flyConn:Disconnect() end
+	if flyGyro then flyGyro:Destroy() end
+	if flyVel then flyVel:Destroy() end
+	local char = player.Character
 	if char then
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if hum then hum.PlatformStand = false end
 	end
 end
 
+-- 🦘 INFINITE JUMP
+local function toggleInfiniteJump()
+	infiniteJumpEnabled = not infiniteJumpEnabled
+	if infiniteJumpEnabled then
+		if not jumpConn then
+			jumpConn = UIS.JumpRequest:Connect(function()
+				if infiniteJumpEnabled then
+					local char = player.Character
+					if char and char:FindFirstChildOfClass("Humanoid") then
+						char:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
+					end
+				end
+			end)
+		end
+		StarterGui:SetCore("SendNotification", {Title="Infinite Jump", Text="Enabled ✅", Duration=2})
+	else
+		StarterGui:SetCore("SendNotification", {Title="Infinite Jump", Text="Disabled ❌", Duration=2})
+	end
+end
+
+-- 🚀 SPEED SYSTEM
+local function setSpeed(amount)
+	local char = player.Character
+	if char and char:FindFirstChildOfClass("Humanoid") then
+		char:FindFirstChildOfClass("Humanoid").WalkSpeed = amount
+	end
+end
+
 -- 🖥️ GUI
 local gui = Instance.new("ScreenGui")
-gui.Parent = localPlayer:WaitForChild("PlayerGui")
+gui.Name = "ControlGui"
 gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 260, 0, 430)
-frame.Position = UDim2.new(0, 20, 0, 100)
-frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
-frame.Parent = gui
+frame.Size = UDim2.new(0, 260, 0, 420)
+frame.Position = UDim2.new(0, 30, 0, 100)
+frame.BackgroundColor3 = Color3.fromRGB(35,35,35)
 frame.Active = true
 frame.Draggable = true
+frame.Parent = gui
 
--- 🟢 Fly Button
-local flyBtn = Instance.new("TextButton")
-flyBtn.Size = UDim2.new(0, 200, 0, 35)
-flyBtn.Position = UDim2.new(0, 30, 0, 30)
-flyBtn.Text = "Fly: OFF"
-flyBtn.TextColor3 = Color3.fromRGB(255,0,0)
-flyBtn.Font = Enum.Font.SourceSansBold
-flyBtn.TextScaled = true
-flyBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-flyBtn.Parent = frame
+local function makeBtn(text, yPos)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0, 200, 0, 35)
+	btn.Position = UDim2.new(0, 30, 0, yPos)
+	btn.BackgroundColor3 = Color3.fromRGB(55,55,55)
+	btn.TextColor3 = Color3.new(1,1,1)
+	btn.Font = Enum.Font.SourceSansBold
+	btn.TextScaled = true
+	btn.Text = text
+	btn.Parent = frame
+	return btn
+end
 
+-- Buttons
+local flyBtn = makeBtn("Fly: OFF", 30)
+local jumpBtn = makeBtn("Infinite Jump: OFF", 80)
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(0,200,0,25)
+speedLabel.Position = UDim2.new(0,30,0,130)
+speedLabel.Text = "Speed: "..speedValue
+speedLabel.TextColor3 = Color3.new(1,1,1)
+speedLabel.Font = Enum.Font.SourceSansBold
+speedLabel.TextScaled = true
+speedLabel.BackgroundTransparency = 1
+speedLabel.Parent = frame
+
+local plusBtn = makeBtn("+ Speed", 170)
+local minusBtn = makeBtn("- Speed", 220)
+
+-- 🔘 BUTTON LOGIC
 flyBtn.MouseButton1Click:Connect(function()
 	if flying then
 		stopFly()
@@ -98,258 +155,27 @@ flyBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- ⚙️ Fly Speed Controls
-local speedTitle = Instance.new("TextLabel")
-speedTitle.Size = UDim2.new(0,200,0,25)
-speedTitle.Position = UDim2.new(0,30,0,80)
-speedTitle.Text = "Fly Speed: "..flySpeed
-speedTitle.TextColor3 = Color3.new(1,1,1)
-speedTitle.TextScaled = true
-speedTitle.Font = Enum.Font.SourceSansBold
-speedTitle.BackgroundTransparency = 1
-speedTitle.Parent = frame
-
-local minusBtn = Instance.new("TextButton")
-minusBtn.Size = UDim2.new(0, 40, 0, 30)
-minusBtn.Position = UDim2.new(0, 30, 0, 110)
-minusBtn.Text = "-"
-minusBtn.TextColor3 = Color3.new(1,1,1)
-minusBtn.TextScaled = true
-minusBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
-minusBtn.Parent = frame
-
-local plusBtn = Instance.new("TextButton")
-plusBtn.Size = UDim2.new(0, 40, 0, 30)
-plusBtn.Position = UDim2.new(0, 190, 0, 110)
-plusBtn.Text = "+"
-plusBtn.TextColor3 = Color3.new(1,1,1)
-plusBtn.TextScaled = true
-plusBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
-plusBtn.Parent = frame
-
-plusBtn.MouseButton1Click:Connect(function()
-	flySpeed += 5
-	speedTitle.Text = "Fly Speed: "..flySpeed
-end)
-
-minusBtn.MouseButton1Click:Connect(function()
-	if flySpeed > 5 then
-		flySpeed -= 5
-		speedTitle.Text = "Fly Speed: "..flySpeed
+jumpBtn.MouseButton1Click:Connect(function()
+	toggleInfiniteJump()
+	if infiniteJumpEnabled then
+		jumpBtn.Text = "Infinite Jump: ON"
+		jumpBtn.TextColor3 = Color3.fromRGB(0,255,0)
+	else
+		jumpBtn.Text = "Infinite Jump: OFF"
+		jumpBtn.TextColor3 = Color3.fromRGB(255,0,0)
 	end
 end)
 
--- 🔮 Random Functions
-local randomTitle = Instance.new("TextLabel")
-randomTitle.Size = UDim2.new(0,200,0,25)
-randomTitle.Position = UDim2.new(0,30,0,160)
-randomTitle.Text = "Random Functions"
-randomTitle.TextColor3 = Color3.new(1,1,1)
-randomTitle.TextScaled = true
-randomTitle.Font = Enum.Font.SourceSansBold
-randomTitle.BackgroundTransparency = 1
-randomTitle.Parent = frame
+plusBtn.MouseButton1Click:Connect(function()
+	speedValue += 5
+	speedLabel.Text = "Speed: "..speedValue
+	setSpeed(speedValue)
+end)
 
--- 📜 Function List
-local functions = {
-	{
-		Text = "Infinite Jump (Function 1)",
-		Code = [[
-			-- Infinite Jump with toggle (safe: prevents duplicate connections)
-			if _G.__INFINITE_JUMP then
-				-- disable
-				_G.__INFINITE_JUMP = false
-				if _G.__INFINITE_JUMP_CONN then
-					pcall(function() _G.__INFINITE_JUMP_CONN:Disconnect() end)
-					_G.__INFINITE_JUMP_CONN = nil
-				end
-				pcall(function()
-					if game:GetService("StarterGui") then
-						game:GetService("StarterGui"):SetCore("SendNotification", {
-							Title = "Infinite Jump",
-							Text = "Disabled",
-							Duration = 3
-						})
-					end
-				end)
-			else
-				-- enable
-				_G.__INFINITE_JUMP = true
-				local UIS = game:GetService("UserInputService")
-				local Players = game:GetService("Players")
-				local plr = Players.LocalPlayer
-
-				-- Connect to InputBegan for Space (works reliably with JumpRequest too)
-				_G.__INFINITE_JUMP_CONN = UIS.InputBegan:Connect(function(input, gameProcessed)
-					if gameProcessed then return end
-					if not _G.__INFINITE_JUMP then return end
-					if input.KeyCode == Enum.KeyCode.Space or input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.Space then
-						local char = plr and plr.Character
-						local hum = char and char:FindFirstChildOfClass("Humanoid")
-						if hum then
-							-- Force jump state (safe)
-							pcall(function()
-								hum:ChangeState(Enum.HumanoidStateType.Jumping)
-							end)
-						end
-					end
-				end)
-
-				-- Also respond to the built-in JumpRequest (some clients/exploits use this)
-				pcall(function()
-					if UIS.JumpRequest then
-						_G.__INFINITE_JUMP_JR = UIS.JumpRequest:Connect(function()
-							if not _G.__INFINITE_JUMP then return end
-							local char = plr and plr.Character
-							local hum = char and char:FindFirstChildOfClass("Humanoid")
-							if hum then
-								pcall(function() hum:ChangeState(Enum.HumanoidStateType.Jumping) end)
-							end
-						end)
-					end
-				end)
-
-				pcall(function()
-					if game:GetService("StarterGui") then
-						game:GetService("StarterGui"):SetCore("SendNotification", {
-							Title = "Infinite Jump",
-							Text = "Enabled",
-							Duration = 3
-						})
-					end
-				end)
-			end
-		]]
-	},
-	{
-		Text = "Function 2 (WalkSpeed GUI)",
-		Code = [[
-			local ScreenGui = Instance.new("ScreenGui")
-			local Frame = Instance.new("Frame")
-			local Num = Instance.new("TextBox")
-			local Plus = Instance.new("TextButton")
-			local Minus = Instance.new("TextButton")
-
-			ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-			ScreenGui.ResetOnSpawn = false
-
-			Frame.Size = UDim2.new(0, 200, 0, 100)
-			Frame.Position = UDim2.new(0.5, -100, 0.5, -50)
-			Frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-			Frame.Parent = ScreenGui
-			Frame.Active = true
-			Frame.Draggable = true
-
-			Num.Size = UDim2.new(0.6, 0, 0.6, 0)
-			Num.Position = UDim2.new(0.2, 0, 0.3, 0)
-			Num.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-			Num.TextColor3 = Color3.new(1, 1, 1)
-			Num.TextScaled = true
-			Num.Font = Enum.Font.SourceSans
-			Num.ClearTextOnFocus = true
-			Num.Parent = Frame
-
-			Plus.Size = UDim2.new(0.2, 0, 0.6, 0)
-			Plus.Position = UDim2.new(0.8, 0, 0.3, 0)
-			Plus.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-			Plus.TextColor3 = Color3.new(1, 1, 1)
-			Plus.TextScaled = true
-			Plus.Font = Enum.Font.SourceSans
-			Plus.Text = "+"
-			Plus.Parent = Frame
-
-			Minus.Size = UDim2.new(0.2, 0, 0.6, 0)
-			Minus.Position = UDim2.new(0, 0, 0.3, 0)
-			Minus.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-			Minus.TextColor3 = Color3.new(1, 1, 1)
-			Minus.TextScaled = true
-			Minus.Font = Enum.Font.SourceSans
-			Minus.Text = "-"
-			Minus.Parent = Frame
-
-			local player = game.Players.LocalPlayer
-			local number
-			local humanoid
-
-			local function UpdateNum()
-				Num.Text = tostring(number)
-				if humanoid then
-					humanoid.WalkSpeed = number
-				end
-			end
-
-			local function onCharacterAdded(character)
-				humanoid = character:WaitForChild("Humanoid")
-				number = humanoid.WalkSpeed
-				humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
-					if humanoid.WalkSpeed ~= number then
-						humanoid.WalkSpeed = number
-					end
-				end)
-				UpdateNum()
-			end
-
-			player.CharacterAdded:Connect(onCharacterAdded)
-			if player.Character then onCharacterAdded(player.Character) end
-
-			Plus.MouseButton1Click:Connect(function()
-				number = number + 1
-				UpdateNum()
-			end)
-
-			Minus.MouseButton1Click:Connect(function()
-				if number > 0 then
-					number = number - 1
-					UpdateNum()
-				end
-			end)
-
-			Num.Focused:Connect(function()
-				-- no-op
-			end)
-
-			Num.FocusLost:Connect(function(enterPressed)
-				if enterPressed then
-					local Value = tonumber(Num.Text)
-					if Value and Value > 0 then
-						number = Value
-						UpdateNum()
-					else
-						UpdateNum()
-					end
-				end
-			end)
-
-			game:GetService("StarterGui"):SetCore("SendNotification", {
-				Title = "[Bypass] WalkSpeed Gui",
-				Text = "Made By the_king.78",
-				Duration = 10
-			})
-
-			UpdateNum()
-		]]
-	},
-	{
-		Text = "Function 3",
-		Code = "print('Function 3 executed successfully!')"
-	}
-}
-
--- 🔘 Create buttons
-for i, f in ipairs(functions) do
-	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(0,200,0,30)
-	btn.Position = UDim2.new(0,30,0,180 + i*40)
-	btn.Text = f.Text
-	btn.TextColor3 = Color3.new(1,1,1)
-	btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-	btn.Font = Enum.Font.SourceSansBold
-	btn.TextScaled = true
-	btn.Parent = frame
-
-	btn.MouseButton1Click:Connect(function()
-		pcall(function()
-			loadstring(f.Code)()
-		end)
-	end)
-end
+minusBtn.MouseButton1Click:Connect(function()
+	if speedValue > 5 then
+		speedValue -= 5
+		speedLabel.Text = "Speed: "..speedValue
+		setSpeed(speedValue)
+	end
+end)
