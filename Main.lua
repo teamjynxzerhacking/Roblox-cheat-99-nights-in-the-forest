@@ -1,15 +1,13 @@
--- ✅ Ultimate Admin Panel (Executor)
--- Autor: HRAVYGAMER_STUDIO
-
+-- ✅ Ultimate Admin Panel (Mobile + PC)
 local Players = game:GetService("Players")
 local RS = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
-local StarterGui = game:GetService("StarterGui")
 local LocalPlayer = Players.LocalPlayer
+local StarterGui = game:GetService("StarterGui")
 
--- VARIABLES
 if LocalPlayer.Name ~= "HRAVYGAMER_STUDIO" then return end -- změň na svoje jméno
 
+-- VARIABLES
 local flying = false
 local flySpeed = 70
 local flyGyro, flyVel, flyConn
@@ -20,6 +18,7 @@ local espEnabled = false
 local espFolder = Instance.new("Folder")
 espFolder.Name = "ESPFolder"
 espFolder.Parent = game:GetService("CoreGui")
+local guiVisible = true
 
 -- ===================== FLY =====================
 local function startFly()
@@ -29,20 +28,16 @@ local function startFly()
 	if not root then return end
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if hum then hum.PlatformStand = true end
-
 	flying = true
-
 	flyGyro = Instance.new("BodyGyro")
 	flyGyro.MaxTorque = Vector3.new(9e9,9e9,9e9)
 	flyGyro.P = 9e4
 	flyGyro.CFrame = root.CFrame
 	flyGyro.Parent = root
-
 	flyVel = Instance.new("BodyVelocity")
 	flyVel.MaxForce = Vector3.new(9e9,9e9,9e9)
 	flyVel.Velocity = Vector3.zero
 	flyVel.Parent = root
-
 	flyConn = RS.Heartbeat:Connect(function()
 		if not flying then
 			flyConn:Disconnect()
@@ -104,7 +99,6 @@ end
 -- ===================== ESP =====================
 local function createESP(player)
 	if espFolder:FindFirstChild(player.Name) then return end
-
 	local highlight = Instance.new("Highlight")
 	highlight.Name = player.Name
 	highlight.Parent = espFolder
@@ -181,6 +175,7 @@ frame.Active = true
 frame.Draggable = true
 frame.Parent = gui
 
+-- TITLE
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1,0,0,40)
 title.Position = UDim2.new(0,0,0,0)
@@ -191,17 +186,73 @@ title.TextColor3 = Color3.new(1,1,1)
 title.BackgroundTransparency = 1
 title.Parent = frame
 
+-- CLOSE -> minimalizace do kolečka
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0,40,0,40)
 closeBtn.Position = UDim2.new(1,-45,0,5)
-closeBtn.Text = "X"
+closeBtn.Text = "–"
 closeBtn.Font = Enum.Font.SourceSansBold
 closeBtn.TextScaled = true
 closeBtn.TextColor3 = Color3.fromRGB(255,0,0)
 closeBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
 closeBtn.Parent = frame
-closeBtn.MouseButton1Click:Connect(function() gui:Destroy() end)
 
+-- malé kolečko pro zobrazení GUI
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0,50,0,50)
+toggleBtn.Position = UDim2.new(0,50,0,50)
+toggleBtn.Text = "⚡"
+toggleBtn.Font = Enum.Font.SourceSansBold
+toggleBtn.TextScaled = true
+toggleBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+toggleBtn.Visible = false
+toggleBtn.Parent = gui
+toggleBtn.ZIndex = 10
+toggleBtn.AutoButtonColor = true
+
+-- Dragable toggleBtn
+local dragging = false
+local dragInput, dragStart, startPos
+toggleBtn.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = toggleBtn.Position
+	end
+end)
+
+toggleBtn.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
+		dragInput = input
+	end
+end)
+
+UIS.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		local delta = input.Position - dragStart
+		toggleBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+
+toggleBtn.MouseButton1Click:Connect(function()
+	frame.Visible = true
+	toggleBtn.Visible = false
+	guiVisible = true
+end)
+
+UIS.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = false
+	end
+end)
+
+closeBtn.MouseButton1Click:Connect(function()
+	frame.Visible = false
+	toggleBtn.Visible = true
+	guiVisible = false
+end)
+
+-- HELPER to make buttons
 local function makeBtn(text,posY,callback)
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(0,240,0,35)
@@ -216,14 +267,9 @@ local function makeBtn(text,posY,callback)
 	return btn
 end
 
+-- BUTTONS
 local flyBtn = makeBtn("Fly: OFF",60,function()
-	if flying then
-		stopFly()
-		flyBtn.Text = "Fly: OFF"
-	else
-		startFly()
-		flyBtn.Text = "Fly: ON"
-	end
+	if flying then stopFly() flyBtn.Text = "Fly: OFF" else startFly() flyBtn.Text = "Fly: ON" end
 end)
 
 local jumpBtn = makeBtn("Infinite Jump: OFF",110,function()
