@@ -153,11 +153,76 @@ randomTitle.Parent = frame
 -- 📜 Function List
 local functions = {
 	{
-		Text = "Function 1",
-		Code = "loadstring(game:HttpGet('https://pastebin.com/raw/2wgbZ6Xd'))()"
+		Text = "Infinite Jump (Function 1)",
+		Code = [[
+			-- Infinite Jump with toggle (safe: prevents duplicate connections)
+			if _G.__INFINITE_JUMP then
+				-- disable
+				_G.__INFINITE_JUMP = false
+				if _G.__INFINITE_JUMP_CONN then
+					pcall(function() _G.__INFINITE_JUMP_CONN:Disconnect() end)
+					_G.__INFINITE_JUMP_CONN = nil
+				end
+				pcall(function()
+					if game:GetService("StarterGui") then
+						game:GetService("StarterGui"):SetCore("SendNotification", {
+							Title = "Infinite Jump",
+							Text = "Disabled",
+							Duration = 3
+						})
+					end
+				end)
+			else
+				-- enable
+				_G.__INFINITE_JUMP = true
+				local UIS = game:GetService("UserInputService")
+				local Players = game:GetService("Players")
+				local plr = Players.LocalPlayer
+
+				-- Connect to InputBegan for Space (works reliably with JumpRequest too)
+				_G.__INFINITE_JUMP_CONN = UIS.InputBegan:Connect(function(input, gameProcessed)
+					if gameProcessed then return end
+					if not _G.__INFINITE_JUMP then return end
+					if input.KeyCode == Enum.KeyCode.Space or input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.Space then
+						local char = plr and plr.Character
+						local hum = char and char:FindFirstChildOfClass("Humanoid")
+						if hum then
+							-- Force jump state (safe)
+							pcall(function()
+								hum:ChangeState(Enum.HumanoidStateType.Jumping)
+							end)
+						end
+					end
+				end)
+
+				-- Also respond to the built-in JumpRequest (some clients/exploits use this)
+				pcall(function()
+					if UIS.JumpRequest then
+						_G.__INFINITE_JUMP_JR = UIS.JumpRequest:Connect(function()
+							if not _G.__INFINITE_JUMP then return end
+							local char = plr and plr.Character
+							local hum = char and char:FindFirstChildOfClass("Humanoid")
+							if hum then
+								pcall(function() hum:ChangeState(Enum.HumanoidStateType.Jumping) end)
+							end
+						end)
+					end
+				end)
+
+				pcall(function()
+					if game:GetService("StarterGui") then
+						game:GetService("StarterGui"):SetCore("SendNotification", {
+							Title = "Infinite Jump",
+							Text = "Enabled",
+							Duration = 3
+						})
+					end
+				end)
+			end
+		]]
 	},
 	{
-		Text = "Function 2",
+		Text = "Function 2 (WalkSpeed GUI)",
 		Code = [[
 			local ScreenGui = Instance.new("ScreenGui")
 			local Frame = Instance.new("Frame")
@@ -236,6 +301,22 @@ local functions = {
 				if number > 0 then
 					number = number - 1
 					UpdateNum()
+				end
+			end)
+
+			Num.Focused:Connect(function()
+				-- no-op
+			end)
+
+			Num.FocusLost:Connect(function(enterPressed)
+				if enterPressed then
+					local Value = tonumber(Num.Text)
+					if Value and Value > 0 then
+						number = Value
+						UpdateNum()
+					else
+						UpdateNum()
+					end
 				end
 			end)
 
