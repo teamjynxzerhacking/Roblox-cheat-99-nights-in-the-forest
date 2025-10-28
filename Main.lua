@@ -1,4 +1,4 @@
--- ✅ Ultimate Admin Panel with Tabs
+-- ✅ Ultimate Admin Panel with Tabs and Status Indicators
 local Players = game:GetService("Players")
 local RS = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
@@ -7,65 +7,57 @@ local StarterGui = game:GetService("StarterGui")
 
 if LocalPlayer.Name ~= "HRAVYGAMER_STUDIO" then return end -- změň na svoje jméno
 
--- ===================== VARIABLES =====================
+-- VARIABLES
 local flying = false
 local flySpeed = 70
 local flyGyro, flyVel, flyConn
-local flyIndicator
-
 local infiniteJumpEnabled = false
 local jumpConn
-
 local speedValue = 16
 local espEnabled = false
 local espFolder = Instance.new("Folder")
 espFolder.Name = "ESPFolder"
 espFolder.Parent = game:GetService("CoreGui")
-
 local noclipEnabled = false
 local noclipConn
-
 local clickTPEnabled = false
 local clickTPConn
-
--- NEW FUN FEATURES
 local hugeJumpEnabled = false
 local bigStepEnabled = false
 
--- ===================== FUNCTIONS =====================
+local statusIndicators = {}
 
--- Fly functions
-local function createFlyIndicator()
-	if flyIndicator then flyIndicator:Destroy() end
-	local char = LocalPlayer.Character
-	if not char then return end
-	local root = char:FindFirstChild("HumanoidRootPart")
-	if not root then return end
-	flyIndicator = Instance.new("BillboardGui")
-	flyIndicator.Name = "FlyIndicator"
-	flyIndicator.Adornee = root
-	flyIndicator.Size = UDim2.new(0,100,0,50)
-	flyIndicator.StudsOffset = Vector3.new(0,3,0)
-	flyIndicator.AlwaysOnTop = true
-	flyIndicator.Parent = game:GetService("CoreGui")
+-- ===================== STATUS INDICATORS =====================
+local function updateIndicator(name, active)
+	if not statusIndicators[name] then
+		local char = LocalPlayer.Character
+		if not char then return end
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not root then return end
 
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1,0,1,0)
-	label.BackgroundTransparency = 1
-	label.TextScaled = true
-	label.Font = Enum.Font.SourceSansBold
-	label.TextColor3 = Color3.new(1,1,0)
-	label.Text = "Fly: ON"
-	label.Parent = flyIndicator
-end
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = name.."Indicator"
+		billboard.Adornee = root
+		billboard.Size = UDim2.new(0,120,0,30)
+		billboard.StudsOffset = Vector3.new(0,3 + (#statusIndicators)*0.8,0)
+		billboard.AlwaysOnTop = true
+		billboard.Parent = game:GetService("CoreGui")
 
-local function removeFlyIndicator()
-	if flyIndicator then
-		flyIndicator:Destroy()
-		flyIndicator = nil
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1,0,1,0)
+		label.BackgroundTransparency = 1
+		label.TextScaled = true
+		label.Font = Enum.Font.SourceSansBold
+		label.TextColor3 = Color3.new(1,1,0)
+		label.Text = name
+		label.Parent = billboard
+
+		statusIndicators[name] = {Billboard=billboard, Label=label}
 	end
+	statusIndicators[name].Billboard.Enabled = active
 end
 
+-- ===================== FLY =====================
 local function startFly()
 	local char = LocalPlayer.Character
 	if not char then return end
@@ -74,16 +66,19 @@ local function startFly()
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if hum then hum.PlatformStand = true end
 	flying = true
-	createFlyIndicator()
+	updateIndicator("Fly", true)
+
 	flyGyro = Instance.new("BodyGyro")
 	flyGyro.MaxTorque = Vector3.new(9e9,9e9,9e9)
 	flyGyro.P = 9e4
 	flyGyro.CFrame = root.CFrame
 	flyGyro.Parent = root
+
 	flyVel = Instance.new("BodyVelocity")
 	flyVel.MaxForce = Vector3.new(9e9,9e9,9e9)
 	flyVel.Velocity = Vector3.zero
 	flyVel.Parent = root
+
 	flyConn = RS.Heartbeat:Connect(function()
 		if not flying then flyConn:Disconnect() return end
 		local cam = workspace.CurrentCamera
@@ -104,7 +99,7 @@ local function stopFly()
 	if flyConn then flyConn:Disconnect() end
 	if flyGyro then flyGyro:Destroy() end
 	if flyVel then flyVel:Destroy() end
-	removeFlyIndicator()
+	updateIndicator("Fly", false)
 	local char = LocalPlayer.Character
 	if char then
 		local hum = char:FindFirstChildOfClass("Humanoid")
@@ -112,7 +107,7 @@ local function stopFly()
 	end
 end
 
--- Infinite Jump
+-- ===================== INFINITE JUMP =====================
 local function toggleInfiniteJump()
 	infiniteJumpEnabled = not infiniteJumpEnabled
 	if infiniteJumpEnabled then
@@ -126,13 +121,13 @@ local function toggleInfiniteJump()
 				end
 			end)
 		end
-		StarterGui:SetCore("SendNotification",{Title="Infinite Jump",Text="Enabled ✅",Duration=2})
+		updateIndicator("Infinite Jump", true)
 	else
-		StarterGui:SetCore("SendNotification",{Title="Infinite Jump",Text="Disabled ❌",Duration=2})
+		updateIndicator("Infinite Jump", false)
 	end
 end
 
--- Speed
+-- ===================== SPEED =====================
 local function setSpeed(amount)
 	local char = LocalPlayer.Character
 	if char and char:FindFirstChildOfClass("Humanoid") then
@@ -140,68 +135,7 @@ local function setSpeed(amount)
 	end
 end
 
--- ESP
-local function createESP(player)
-	if espFolder:FindFirstChild(player.Name) then return end
-	local highlight = Instance.new("Highlight")
-	highlight.Name = player.Name
-	highlight.Parent = espFolder
-	highlight.Adornee = player.Character
-	highlight.FillColor = Color3.fromRGB(255,0,0)
-	highlight.OutlineColor = Color3.fromRGB(255,0,0)
-	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	highlight.Enabled = espEnabled
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "ESPBillboard"
-	billboard.Adornee = player.Character:FindFirstChild("HumanoidRootPart")
-	billboard.Size = UDim2.new(0,150,0,50)
-	billboard.StudsOffset = Vector3.new(0,3,0)
-	billboard.AlwaysOnTop = true
-	billboard.Parent = espFolder
-	local nameLabel = Instance.new("TextLabel")
-	nameLabel.Size = UDim2.new(1,0,0.5,0)
-	nameLabel.Position = UDim2.new(0,0,0,0)
-	nameLabel.BackgroundTransparency = 1
-	nameLabel.TextColor3 = Color3.new(1,1,1)
-	nameLabel.TextScaled = true
-	nameLabel.Font = Enum.Font.SourceSansBold
-	nameLabel.Text = player.Name
-	nameLabel.Parent = billboard
-	local hpLabel = Instance.new("TextLabel")
-	hpLabel.Size = UDim2.new(1,0,0.5,0)
-	hpLabel.Position = UDim2.new(0,0,0.5,0)
-	hpLabel.BackgroundTransparency = 1
-	hpLabel.TextColor3 = Color3.new(0,1,0)
-	hpLabel.TextScaled = true
-	hpLabel.Font = Enum.Font.SourceSansBold
-	hpLabel.Text = "100"
-	hpLabel.Parent = billboard
-	RS.Heartbeat:Connect(function()
-		if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
-			local hp = math.floor(player.Character:FindFirstChildOfClass("Humanoid").Health)
-			hpLabel.Text = "HP: "..hp
-			if highlight then highlight.Enabled = espEnabled end
-		end
-	end)
-end
-
-local function toggleESP()
-	espEnabled = not espEnabled
-	for _, p in pairs(Players:GetPlayers()) do
-		if p ~= LocalPlayer then
-			createESP(p)
-		end
-	end
-	StarterGui:SetCore("SendNotification",{Title="ESP",Text=espEnabled and "Enabled ✅" or "Disabled ❌",Duration=2})
-end
-
-Players.PlayerAdded:Connect(function(p)
-	if espEnabled then
-		createESP(p)
-	end
-end)
-
--- No-Clip
+-- ===================== NOCLIP =====================
 local function toggleNoclip()
 	noclipEnabled = not noclipEnabled
 	if noclipEnabled then
@@ -215,7 +149,7 @@ local function toggleNoclip()
 				end
 			end
 		end)
-		StarterGui:SetCore("SendNotification",{Title="No-Clip",Text="Enabled ✅",Duration=2})
+		updateIndicator("No-Clip", true)
 	else
 		if noclipConn then noclipConn:Disconnect() end
 		local char = LocalPlayer.Character
@@ -226,11 +160,11 @@ local function toggleNoclip()
 				end
 			end
 		end
-		StarterGui:SetCore("SendNotification",{Title="No-Clip",Text="Disabled ❌",Duration=2})
+		updateIndicator("No-Clip", false)
 	end
 end
 
--- Click TP
+-- ===================== CLICK TP =====================
 local function toggleClickTP()
 	clickTPEnabled = not clickTPEnabled
 	if clickTPEnabled then
@@ -245,10 +179,8 @@ local function toggleClickTP()
 				end
 			end
 		end)
-		StarterGui:SetCore("SendNotification",{Title="Click TP",Text="Enabled ✅",Duration=2})
 	else
 		if clickTPConn then clickTPConn:Disconnect() end
-		StarterGui:SetCore("SendNotification",{Title="Click TP",Text="Disabled ❌",Duration=2})
 	end
 end
 
@@ -264,6 +196,7 @@ local function toggleHugeJump()
 			hum.JumpHeight = 50
 			hugeJumpEnabled = true
 		end
+		updateIndicator("Huge Jump", hugeJumpEnabled)
 	end
 end
 
@@ -278,6 +211,7 @@ local function toggleBigStep()
 			hum.StepHeight = 10
 			bigStepEnabled = true
 		end
+		updateIndicator("Big Step", bigStepEnabled)
 	end
 end
 
@@ -288,7 +222,7 @@ gui.ResetOnSpawn = false
 gui.Parent = game:GetService("CoreGui")
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0,320,0,400)
+frame.Size = UDim2.new(0,340,0,400)
 frame.Position = UDim2.new(0,50,0,50)
 frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 frame.Active = true
@@ -306,7 +240,7 @@ title.TextColor3 = Color3.new(1,1,1)
 title.BackgroundTransparency = 1
 title.Parent = frame
 
--- TABS
+-- TAB BUTTONS
 local tabsFrame = Instance.new("Frame")
 tabsFrame.Size = UDim2.new(1,0,0,30)
 tabsFrame.Position = UDim2.new(0,0,0,40)
@@ -317,7 +251,7 @@ local tabNames = {"Main","Teleport","Fun","Player","Misc"}
 local tabButtons = {}
 local pages = {}
 
-for i, name in ipairs(tabNames) do
+for i,name in ipairs(tabNames) do
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(0,60,1,0)
 	btn.Position = UDim2.new(0,60*(i-1),0,0)
@@ -338,18 +272,18 @@ for i, name in ipairs(tabNames) do
 	pages[i] = page
 
 	btn.MouseButton1Click:Connect(function()
-		for j, p in ipairs(pages) do
+		for j,p in ipairs(pages) do
 			p.Visible = false
 		end
 		page.Visible = true
 	end)
 end
 
--- Helper for buttons
+-- Helper to create buttons
 local function makeBtn(text,posY,parent,callback)
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(0,240,0,35)
-	btn.Position = UDim2.new(0,30,0,posY)
+	btn.Position = UDim2.new(0,50,0,posY)
 	btn.BackgroundColor3 = Color3.fromRGB(55,55,55)
 	btn.TextColor3 = Color3.new(1,1,1)
 	btn.Font = Enum.Font.SourceSansBold
@@ -361,27 +295,27 @@ local function makeBtn(text,posY,parent,callback)
 end
 
 -- MAIN TAB
-makeBtn("Fly: OFF",10,pages[1],function()
+makeBtn("Fly",10,pages[1],function()
 	if flying then stopFly() else startFly() end
 end)
-makeBtn("Infinite Jump: OFF",60,pages[1],toggleInfiniteJump)
+makeBtn("Infinite Jump",60,pages[1],toggleInfiniteJump)
 makeBtn("+ Speed",110,pages[1],function()
 	speedValue += 5
 	setSpeed(speedValue)
 end)
 makeBtn("- Speed",160,pages[1],function()
-	if speedValue>5 then speedValue -= 5 setSpeed(speedValue) end
+	if speedValue>5 then speedValue-=5 setSpeed(speedValue) end
 end)
-makeBtn("ESP: OFF",210,pages[1],toggleESP)
+makeBtn("ESP",210,pages[1],toggleESP)
 
 -- TELEPORT TAB
-makeBtn("Click TP: OFF",10,pages[2],toggleClickTP)
+makeBtn("Click TP",10,pages[2],toggleClickTP)
 
 -- FUN TAB
 makeBtn("Huge Jump",10,pages[3],toggleHugeJump)
 makeBtn("Big Step",60,pages[3],toggleBigStep)
 
 -- PLAYER TAB
-makeBtn("No-Clip: OFF",10,pages[4],toggleNoclip)
+makeBtn("No-Clip",10,pages[4],toggleNoclip)
 
--- Misc tab (reserved)
+-- Misc tab reserved
