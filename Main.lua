@@ -11,16 +11,59 @@ if LocalPlayer.Name ~= "HRAVYGAMER_STUDIO" then return end -- změň na svoje jm
 local flying = false
 local flySpeed = 70
 local flyGyro, flyVel, flyConn
+local flyIndicator
+
 local infiniteJumpEnabled = false
 local jumpConn
+
 local speedValue = 16
+
 local espEnabled = false
 local espFolder = Instance.new("Folder")
 espFolder.Name = "ESPFolder"
 espFolder.Parent = game:GetService("CoreGui")
+
+local noclipEnabled = false
+local noclipConn
+
+local clickTPEnabled = false
+local clickTPConn
+
 local guiVisible = true
 
 -- ===================== FLY =====================
+local function createFlyIndicator()
+	if flyIndicator then flyIndicator:Destroy() end
+	local char = LocalPlayer.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+
+	flyIndicator = Instance.new("BillboardGui")
+	flyIndicator.Name = "FlyIndicator"
+	flyIndicator.Adornee = root
+	flyIndicator.Size = UDim2.new(0,100,0,50)
+	flyIndicator.StudsOffset = Vector3.new(0,3,0)
+	flyIndicator.AlwaysOnTop = true
+	flyIndicator.Parent = game:GetService("CoreGui")
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1,0,1,0)
+	label.BackgroundTransparency = 1
+	label.TextScaled = true
+	label.Font = Enum.Font.SourceSansBold
+	label.TextColor3 = Color3.new(1,1,0)
+	label.Text = "Fly: ON"
+	label.Parent = flyIndicator
+end
+
+local function removeFlyIndicator()
+	if flyIndicator then
+		flyIndicator:Destroy()
+		flyIndicator = nil
+	end
+end
+
 local function startFly()
 	local char = LocalPlayer.Character
 	if not char then return end
@@ -29,15 +72,19 @@ local function startFly()
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if hum then hum.PlatformStand = true end
 	flying = true
+	createFlyIndicator()
+
 	flyGyro = Instance.new("BodyGyro")
 	flyGyro.MaxTorque = Vector3.new(9e9,9e9,9e9)
 	flyGyro.P = 9e4
 	flyGyro.CFrame = root.CFrame
 	flyGyro.Parent = root
+
 	flyVel = Instance.new("BodyVelocity")
 	flyVel.MaxForce = Vector3.new(9e9,9e9,9e9)
 	flyVel.Velocity = Vector3.zero
 	flyVel.Parent = root
+
 	flyConn = RS.Heartbeat:Connect(function()
 		if not flying then
 			flyConn:Disconnect()
@@ -61,6 +108,7 @@ local function stopFly()
 	if flyConn then flyConn:Disconnect() end
 	if flyGyro then flyGyro:Destroy() end
 	if flyVel then flyVel:Destroy() end
+	removeFlyIndicator()
 	local char = LocalPlayer.Character
 	if char then
 		local hum = char:FindFirstChildOfClass("Humanoid")
@@ -161,6 +209,57 @@ Players.PlayerAdded:Connect(function(p)
 	end
 end)
 
+-- ===================== NOCLIP =====================
+local function toggleNoclip()
+	noclipEnabled = not noclipEnabled
+	if noclipEnabled then
+		noclipConn = RS.Stepped:Connect(function()
+			local char = LocalPlayer.Character
+			if char then
+				for _, part in pairs(char:GetChildren()) do
+					if part:IsA("BasePart") then
+						part.CanCollide = false
+					end
+				end
+			end
+		end)
+		StarterGui:SetCore("SendNotification",{Title="No-Clip",Text="Enabled ✅",Duration=2})
+	else
+		if noclipConn then noclipConn:Disconnect() end
+		local char = LocalPlayer.Character
+		if char then
+			for _, part in pairs(char:GetChildren()) do
+				if part:IsA("BasePart") then
+					part.CanCollide = true
+				end
+			end
+		end
+		StarterGui:SetCore("SendNotification",{Title="No-Clip",Text="Disabled ❌",Duration=2})
+	end
+end
+
+-- ===================== CLICK TELEPORT =====================
+local function toggleClickTP()
+	clickTPEnabled = not clickTPEnabled
+	if clickTPEnabled then
+		clickTPConn = UIS.InputBegan:Connect(function(input, processed)
+			if not processed and input.UserInputType == Enum.UserInputType.MouseButton1 then
+				local mouse = LocalPlayer:GetMouse()
+				local targetPos = mouse.Hit.Position
+				local char = LocalPlayer.Character
+				local root = char and char:FindFirstChild("HumanoidRootPart")
+				if root then
+					root.CFrame = CFrame.new(targetPos + Vector3.new(0,3,0))
+				end
+			end
+		end)
+		StarterGui:SetCore("SendNotification",{Title="Click TP",Text="Enabled ✅",Duration=2})
+	else
+		if clickTPConn then clickTPConn:Disconnect() end
+		StarterGui:SetCore("SendNotification",{Title="Click TP",Text="Disabled ❌",Duration=2})
+	end
+end
+
 -- ===================== GUI =====================
 local gui = Instance.new("ScreenGui")
 gui.Name = "AdminPanel"
@@ -168,7 +267,7 @@ gui.ResetOnSpawn = false
 gui.Parent = game:GetService("CoreGui")
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0,300,0,400)
+frame.Size = UDim2.new(0,300,0,500)
 frame.Position = UDim2.new(0,50,0,50)
 frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 frame.Active = true
@@ -304,4 +403,14 @@ end)
 local espBtn = makeBtn("ESP: OFF",300,function()
 	toggleESP()
 	espBtn.Text = espEnabled and "ESP: ON" or "ESP: OFF"
+end)
+
+local noclipBtn = makeBtn("No-Clip: OFF",350,function()
+	toggleNoclip()
+	noclipBtn.Text = noclipEnabled and "No-Clip: ON" or "No-Clip: OFF"
+end)
+
+local clickTPBtn = makeBtn("Click TP: OFF",400,function()
+	toggleClickTP()
+	clickTPBtn.Text = clickTPEnabled and "Click TP: ON" or "Click TP: OFF"
 end)
